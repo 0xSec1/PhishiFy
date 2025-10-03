@@ -20,6 +20,18 @@
     }
   }
 
+  //Get Root Domain
+  function getRootDomain(url){
+    try{
+      const hostname = new URL(url).hostname;
+      const parts = hostname.split(".");
+      return parts.slice(-2).join(".");
+    }catch{
+      return null;
+    }
+  }
+
+  //Check for Provider
   function getAnchorSelector(){
     if(window.location.hostname.includes("mail.google.com")){
       return "div.a3s a"; //Gmail
@@ -43,6 +55,13 @@
         const visibleText = getVisibleText(a);
         const href = getHref(a);
         if(!href) return;
+
+        //Highlight Suspicious links
+        if(isSuspicious(visibleText, href)){
+          a.style.border = "2px solid red";
+          a.style.backgroundColor = "rgba(255,0,0,0.1)";
+          a.title = LOG_PREFIX + "Suspicious Link";
+        }
         results.push({
           visibleText,
           href,
@@ -54,9 +73,27 @@
     });
 
     if(results.length){
-      console.log(LOG_PREFIX,'found anchors:',results);
+      console.log(LOG_PREFIX,'found anchors in mail body:',results);
     }
     return results;
+  }
+
+  // Check Suspicious Links
+  function isSuspicious(visibleText, href){
+    try{
+      const url = new URL(href);
+      const hostname = url.hostname.toLowerCase();
+      const rootDomain = getRootDomain(href);
+
+      //If Whitelist --> Not suspicious
+      if(WHITELIST_DOMAINS.includes(hostname)) return false;
+      //If contain root domain in text --> NOT suspicious
+      if(visibleText.toLowerCase().includes(rootDomain)) return false;
+
+      return true;  //Suspicious
+    }catch{
+      return true; //Invalid url -> Suspicious
+    }
   }
 
   //Debounce helper
@@ -68,8 +105,6 @@
     };
   }
 
-  //Initial Scan
-  findAnchors();
 
   //Observe DOM Changes
   const observer = new MutationObserver(debounce(mutations => {
@@ -87,6 +122,8 @@
     console.warn(LOG_PREFIX,'could not attach mutation observer',e);
   }
 
+  //Initial Scan
+  findAnchors();
   //Small Debug helper
   window._phishDetect = {
     findAnchors: () => findAnchors(document)
