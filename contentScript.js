@@ -20,10 +20,22 @@
     }
   }
 
+  function getAnchorSelector(){
+    if(window.location.hostname.includes("mail.google.com")){
+      return "div.a3s a"; //Gmail
+    }
+    // Use When needed
+    // if(window.location.hostname.includes("outlook.office.com")){
+    //   return "div[data-msg-id] a";  //Outlook
+    // }
+    return "a"; //Fallback
+  }
+
   //Find anchor within root node
   function findAnchors(root = document){
-    //Narrow it 
-    const anchors = Array.from(root.querySelectorAll('a'));
+    //Narrow it use Array.from if needed to use array methods
+    const selector = getAnchorSelector();
+    const anchors = root.querySelectorAll(selector);
     const results = [];
 
     anchors.forEach(a => {
