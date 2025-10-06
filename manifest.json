@@ -6,12 +6,14 @@
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
     "https://mail.google.com/*",
-    "https://outlook.office.com/*"
+    "https://outlook.office.com/*",
+    "https://www.virustotal.com/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
-  "action": {
+  "options_page": "options.html",
+  "action":{
     "default_popup": "popup.html",
     "default_title": "PhishDetector"
   },

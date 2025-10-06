@@ -31,6 +31,23 @@
     }
   }
 
+  //Check visible text with href
+  //TODO-> Check for punnycode
+  function heuristicCheck(visibleText, href){
+    try{
+      const rootDomain = getRootDomain(href);
+      if(!rootDomain){
+        return true;  //Invalid -- suspicious
+      }
+      if(!visibleText.toLowerCase().includes(rootDomain)){
+        return true;  //mismatch -- suspicious
+      }
+      return false;
+    }catch{
+      return true;
+    }
+  }
+
   //Check for Provider
   function getAnchorSelector(){
     if(window.location.hostname.includes("mail.google.com")){
@@ -42,6 +59,8 @@
     // }
     return "a"; //Fallback
   }
+
+  //TODO->safeGetFromStorage, and virustotal check fixes
 
   //Find anchor within root node
   function findAnchors(root = document){
@@ -67,6 +86,7 @@
           href,
           location: window.location.href
         });
+        checkWithVirusTotal(a.href);
       }catch(e){
         console.error(LOG_PREFIX,'error reading anchor',e);
       }
@@ -94,6 +114,22 @@
     }catch{
       return true; //Invalid url -> Suspicious
     }
+  }
+
+  function checkWithVirusTotal(href){
+    chrome.runtime.sendMessage({action: "check_url", url: href}, (response) => {
+      if (!response || response.error){
+        console.warn("[PhishDetect] VT Check Error:", response?.error);
+        return;
+      }
+
+      const stats = response.stats;
+      if(stats && stats.malicious > 0){
+        console.warn("Suspicious Link detected", href, stats);
+      }else{
+        console.log("Link is clean:", href);
+      }
+    });
   }
 
   //Debounce helper
