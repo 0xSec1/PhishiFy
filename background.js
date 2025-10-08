@@ -1,16 +1,59 @@
 console.log("Background Loaded");
+
+const VT_CACHE_KEY = "VT_CACHE";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; //24 Hours
+
+//Get cache objct from storage
+function getPersistentCache(){
+  return new Promise((resolve) => {
+    try{
+      chrome.storage.local.get([VT_CACHE_KEY], (res) => {
+        resolve(res[VT_CACHE_KEY] || {});
+      });
+    }catch(e){
+      console.warn("[Background] Storage get failed", e);
+      resolve({});
+    }
+  });
+}
+
+function setPersistentCache(obj){
+  return new Promise((resolve) => {
+    try{
+      const toStore = {};
+      toStore[VT_CACHE_KEY] = obj;
+      chrome.storage.local.set(toStore, () => resolve());
+    }catch(e){
+      console.warn("[Background] storage set failed", e);
+      resolve();
+    }
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if(request.action == "check_url"){
     const href = request.url;
 
-    chrome.storage.local.get(["VT_API_KEY"], async(data) => {
-      const apiKey = data.VT_API_KEY;
-      if(!apiKey){
-        sendResponse({error: "API Not set in option"});
-        return;
-      }
-
+    (async() => {
       try{
+        const cache = await getPersistentCache();
+        const entry = cache[href];
+        const now = Date.now();
+
+        //If Cached return cache
+        if(entry && (now - entry.ts) < CACHE_TTL_MS && entry.stats){
+          sendResponse({stats: entry.stats, cached: true});
+          return;
+        }
+
+        //Get API Key
+        const data = await new Promise((res) => chrome.storage.local.get(["VT_API_KEY"], res));
+        const apiKey = data.VT_API_KEY;
+        if(!apiKey){
+          sendResponse({error: "API Not set in option"});
+          return;
+        }
+
         const submitRep = await fetch("https://www.virustotal.com/api/v3/urls",{
           method: "POST",
           headers: {
@@ -48,11 +91,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const stats = resultData?.data?.attributes?.stats || {};
         sendResponse({stats});
 
+        //Update persistent cache url
+        cache[href] = {stats, ts:Date.now()};
+        await setPersistentCache(cache);
+
+        sendResponse({stats, cached: false});
       }catch(err){
-        console.error("VT API Error:",err);
-        sendResponse({error: "Failed to query Virustotal"});
+        console.error("VT API Error:", err);
+        sendResponse({error: "Failed to query VT"});
       }
-    });
+    })();
     return true;  //keep msg channel open
   }
-})
+});

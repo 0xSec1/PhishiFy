@@ -1,6 +1,7 @@
 // Basic Anchor Discovery + logging + dynamic observation
 (function(){
   const LOG_PREFIX = '[PhishDetect]';
+  const vtSessionCache= new Map(); //url -> stats
 
   //Get visible text of an element
   function getVisibleText(el){
@@ -116,18 +117,69 @@
     }
   }
 
-  function checkWithVirusTotal(href){
-    chrome.runtime.sendMessage({action: "check_url", url: href}, (response) => {
-      if (!response || response.error){
-        console.warn("[PhishDetect] VT Check Error:", response?.error);
-        return;
-      }
+  function applyVTResultToAnchors(href, result){
+    const anchors = document.querySelectorAll(`a[href="${href}"]`);
+    anchors.forEach(a => {
+      try{
+        a.dataset.vtStatus = result ? (result.malicious && result.malicious > 0 ? "malicious" : "clean") : "error";
+        if(!result){
+          //error state
+          a.style.border = "2px dashed grey";
+          a.style.backgroundColor = "rgba(128,128,128,0.08)";
+          a.title = `${LOG_PREFIX} VT Check Failed`;
+          return;
+        }
 
-      const stats = response.stats;
-      if(stats && stats.malicious > 0){
-        console.warn("Suspicious Link detected", href, stats);
-      }else{
-        console.log("Link is clean:", href);
+        const maliciousCount = result.malicious || 0;
+        if(maliciousCount > 0){
+          a.style.border = "2px solid red";
+          a.style.backgroundColor = "rgba(255,0,0,0.1)";
+          a.title = `${maliciousCount} VT Engine flagged this link`;
+        }else{
+          a.style.border = "2px solid green";
+          a.style.backgroundColor = "rgba(0,128,0,0,06)";
+          a.title = `No VT Engine flagged this link`;
+        }
+      }catch(e){
+        console.error(LOG_PREFIX, "applyVTResult error", e);
+      }
+    });
+  }
+
+  function checkWithVirusTotal(href){
+    //Checks if cache is there and not send request again if available
+    if(vtSessionCache.has(href)){
+      applyVTResultToAnchors(href, vtSessionCache.get(href));
+      return;
+    }
+
+    //set temp placeholder to avoid resending untill response arrive
+    vtSessionCache.set(href, null); //Indicates in progress
+
+    chrome.runtime.sendMessage({action: "check_url", url: href}, (response) => {
+      try{
+        if (!response || response.error){
+          console.warn("[PhishDetect] VT Check Error:", response?.error);
+          vtSessionCache.set(href, null); //keep null to avoid requery
+          applyVTResultToAnchors(href, null);
+          return;
+        }
+
+        const stats = response.stats || {};
+
+        //Store in session cache
+        vtSessionCache.set(href, stats);
+        applyVTResultToAnchors(href, stats);
+
+        if(stats && stats.malicious > 0){
+          console.warn("Suspicious Link detected", href, stats);
+        }else{
+          console.log("Link is clean:", href);
+        }
+      }catch(e){
+        console.error(LOG_PREFIX, "CheckWithVT callback error", e);
+        vtSessionCache.set(href, null);
+        applyVTResultToAnchors(href, null);
       }
     });
   }
