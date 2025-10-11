@@ -2,6 +2,7 @@ console.log("Background Loaded");
 
 const VT_CACHE_KEY = "VT_CACHE";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; //24 Hours
+let globalStats = {checked: 0, clean: 0, suspicious: 0};
 
 //Get cache objct from storage
 function getPersistentCache(){
@@ -30,7 +31,32 @@ function setPersistentCache(obj){
   });
 }
 
+function updateGlobalStats(vtStats){
+  globalStats.checked++;
+  const maliciousCount = vtStats?.mailcious || 0;
+  if(maliciousCount > 0){
+    globalStats.suspicious++;
+  }else{
+    globalStats.clean++;
+  }
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+
+  if(request.action == "get_stats"){
+    sendResponse(globalStats);
+    return;
+  }
+
+  if(request.action == "clear_cache"){
+    chrome.storage.local.remove(VT_CACHE_KEY, () => {
+      globalStats = {checked: 0, clean: 0, suspicious: 0};
+      console.log("Cache Cleared");
+      sendResponse({success: true});
+    });
+    return true;
+  }
+
   if(request.action == "check_url"){
     const href = request.url;
 
@@ -88,14 +114,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         const resultData = await resultRep.json();
-        const stats = resultData?.data?.attributes?.stats || {};
-        sendResponse({stats});
+        const vtStats = resultData?.data?.attributes?.stats || {};
+        sendResponse({vtStats});
 
         //Update persistent cache url
-        cache[href] = {stats, ts:Date.now()};
+        cache[href] = {vtStats, ts:Date.now()};
         await setPersistentCache(cache);
 
-        sendResponse({stats, cached: false});
+        sendResponse({vtStats, cached: false});
+        updateGlobalStats(vtStats);
       }catch(err){
         console.error("VT API Error:", err);
         sendResponse({error: "Failed to query VT"});
@@ -104,3 +131,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;  //keep msg channel open
   }
 });
+

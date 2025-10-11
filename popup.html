@@ -1,10 +1,24 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>PhishHelper</title>
-  </head>
-  <body>
-    <h3>PhishHelper</h3>
-    <p>Extension loaded successfully!</p>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <title>PhishDetector Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h2>PhishDetector Dashboard</h2>
+
+  <div id="stats">
+    <p><b>Links Checked:</b> <span id="checked">0</span></p>
+    <p><b>Clean:</b> <span id="clean">0</span></p>
+    <p><b>Suspicious:</b> <span id="suspicious">0</span></p>
+  </div>
+
+  <button id="clearCache">Clear Cache</button>
+
+  <p id="statusMsg" class="small"></p>
+
+  <script src="popup.js"></script>
+</body>
 </html>
+

@@ -1,0 +1,36 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 12px;
+  width: 220px;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+
+#stats p {
+  margin: 4px 0;
+}
+
+button {
+  margin-top: 10px;
+  background-color: #1976d2;
+  border: none;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+}
+
+button:hover {
+  background-color: #0f5cb5;
+}
+
+#statusMsg {
+  font-size: 0.8em;
+  margin-top: 6px;
+  color: green;
+}
+
