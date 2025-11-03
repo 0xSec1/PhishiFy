@@ -6,8 +6,8 @@ import pandas as pd
 import uvicorn
 from extract_url import extract_url
 
-model = load("phish_feature_model.joblib")
-label_encoder = load("label_encoder.joblib")
+model = load("model/phish_feature_model.joblib")
+label_encoder = load("model/label_encoder.joblib")
 
 app = FastAPI(title="PhishDetector API")
 
@@ -31,6 +31,11 @@ def predict(data: URLRequest):
         df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
 
         prob = model.predict_proba(df)[0][1]
+
+        #Adjust on trusted domain
+        if input_dict.get("is_safe_domain") == 1 and prob < 0.8:
+            prob = max(0.0, prob - 0.4) #reduce phishing confidence
+
         pred = int(prob > 0.5)
         label = label_encoder.inverse_transform([pred])[0]
         return {"label": label, "probability": float(prob)}
