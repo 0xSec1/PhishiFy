@@ -1,22 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8" />
   <title>PhishDetector Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <h2>PhishDetector Dashboard</h2>
+  <div id="container">
+    <h1>PhishDetector</h1>
+    <div id="scoreCard">
+      <h2 id="riskLevel">Loading...</h2>
+      <p id="scoreText">Risk Score: --</p>
+    </div>
 
-  <div id="stats">
-    <p><b>Links Checked:</b> <span id="checked">0</span></p>
-    <p><b>Clean:</b> <span id="clean">0</span></p>
-    <p><b>Suspicious:</b> <span id="suspicious">0</span></p>
+    <div id="details">
+      <h3>Malicious Parts</h3>
+      <ul id="maliciousList">
+        <li>Scanning in progress...</li>
+      </ul>
+    </div>
+
+    <div id="footer">
+      <button id="refreshBtn">Refresh</button>
+      <button id="clearBtn">Clear Cache</button>
+    </div>
   </div>
-
-  <button id="clearCache">Clear Cache</button>
-
-  <p id="statusMsg" class="small"></p>
 
   <script src="popup.js"></script>
 </body>
