@@ -126,20 +126,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // -------------------- AI MODEL CHECK --------------------
   if (message.action === "checkAI" && message.url) {
-    fetch("http://127.0.0.1:5000/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: message.url }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        sendResponse({ result: data });
-      })
-      .catch((err) => {
-        console.error("[Background] AI API error:", err);
-        sendResponse({ result: { label: "error", probability: 0 } });
+  const href = message.url;
+  (async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: href }),
       });
-    return true;
+      const data = await res.json();
+
+      // Save AI result to cache
+      const cache = await getPersistentCache();
+      cache[href] = cache[href] || {};
+      cache[href].aiResult = data;
+      cache[href].ts = Date.now();
+      await setPersistentCache(cache);
+
+      // Update stats if AI says phishing
+      if (data.label === "phishing") {
+        globalStats.suspicious++;
+      } else {
+        globalStats.clean++;
+      }
+      globalStats.checked++;
+
+      sendResponse({ result: data });
+    } catch (err) {
+      console.error("[Background] AI API error:", err);
+      sendResponse({ result: { label: "error", probability: 0 } });
+    }
+  })();
+  return true;
   }
 });
 
