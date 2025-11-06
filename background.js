@@ -1,134 +1,145 @@
-console.log("Background Loaded");
+console.log("[PhishDetector] Background Loaded");
 
 const VT_CACHE_KEY = "VT_CACHE";
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; //24 Hours
-let globalStats = {checked: 0, clean: 0, suspicious: 0};
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+let globalStats = { checked: 0, clean: 0, suspicious: 0 };
 
-//Get cache objct from storage
-function getPersistentCache(){
-  return new Promise((resolve) => {
-    try{
-      chrome.storage.local.get([VT_CACHE_KEY], (res) => {
-        resolve(res[VT_CACHE_KEY] || {});
-      });
-    }catch(e){
-      console.warn("[Background] Storage get failed", e);
-      resolve({});
-    }
-  });
-}
-
-function setPersistentCache(obj){
-  return new Promise((resolve) => {
-    try{
-      const toStore = {};
-      toStore[VT_CACHE_KEY] = obj;
-      chrome.storage.local.set(toStore, () => resolve());
-    }catch(e){
-      console.warn("[Background] storage set failed", e);
-      resolve();
-    }
-  });
-}
-
-function updateGlobalStats(vtStats){
-  globalStats.checked++;
-  const maliciousCount = vtStats?.mailcious || 0;
-  if(maliciousCount > 0){
-    globalStats.suspicious++;
-  }else{
-    globalStats.clean++;
+// Helper: get cache
+async function getPersistentCache() {
+  try {
+    const res = await chrome.storage.local.get([VT_CACHE_KEY]);
+    return res[VT_CACHE_KEY] || {};
+  } catch (e) {
+    console.warn("[Background] Storage get failed", e);
+    return {};
   }
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+// Helper: set cache
+async function setPersistentCache(obj) {
+  try {
+    const toStore = {};
+    toStore[VT_CACHE_KEY] = obj;
+    await chrome.storage.local.set(toStore);
+  } catch (e) {
+    console.warn("[Background] Storage set failed", e);
+  }
+}
 
-  if(request.action == "get_stats"){
+// Update stats
+function updateGlobalStats(vtStats) {
+  globalStats.checked++;
+  const maliciousCount = vtStats?.malicious || 0;
+  if (maliciousCount > 0) globalStats.suspicious++;
+  else globalStats.clean++;
+}
+
+// -------------------- MAIN MESSAGE HANDLER --------------------
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+  // -------------------- DASHBOARD ACTIONS --------------------
+  if (message.action === "get_stats") {
     sendResponse(globalStats);
     return;
   }
 
-  if(request.action == "clear_cache"){
+  if (message.action === "clear_cache") {
     chrome.storage.local.remove(VT_CACHE_KEY, () => {
-      globalStats = {checked: 0, clean: 0, suspicious: 0};
-      console.log("Cache Cleared");
-      sendResponse({success: true});
+      globalStats = { checked: 0, clean: 0, suspicious: 0 };
+      console.log("[Background] Cache Cleared");
+      sendResponse({ success: true });
     });
     return true;
   }
 
-  if(request.action == "check_url"){
-    const href = request.url;
-
-    (async() => {
-      try{
+  // -------------------- VIRUSTOTAL CHECK --------------------
+  if (message.action === "check_url" && message.url) {
+    const href = message.url;
+    (async () => {
+      try {
         const cache = await getPersistentCache();
         const entry = cache[href];
         const now = Date.now();
 
-        //If Cached return cache
-        if(entry && (now - entry.ts) < CACHE_TTL_MS && entry.stats){
-          sendResponse({stats: entry.stats, cached: true});
+        // Cache hit
+        if (entry && (now - entry.ts) < CACHE_TTL_MS && entry.vtStats) {
+          sendResponse({ vtStats: entry.vtStats, cached: true });
           return;
         }
 
-        //Get API Key
-        const data = await new Promise((res) => chrome.storage.local.get(["VT_API_KEY"], res));
+        // Fetch API key
+        const data = await chrome.storage.local.get(["VT_API_KEY"]);
         const apiKey = data.VT_API_KEY;
-        if(!apiKey){
-          sendResponse({error: "API Not set in option"});
+        if (!apiKey) {
+          sendResponse({ error: "API key not set in options" });
           return;
         }
 
-        const submitRep = await fetch("https://www.virustotal.com/api/v3/urls",{
+        // Submit URL
+        const submitRep = await fetch("https://www.virustotal.com/api/v3/urls", {
           method: "POST",
           headers: {
             "x-apikey": apiKey,
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": "application/x-www-form-urlencoded",
           },
-
-          body: `url=${encodeURIComponent(href)}`
+          body: `url=${encodeURIComponent(href)}`,
         });
 
-        if(!submitRep.ok){
-          console.error("VT Submit failed:",submitRep.status);
-          sendResponse({error: `Submit failed (${submitRep.status})`});
+        if (!submitRep.ok) {
+          sendResponse({ error: `Submit failed (${submitRep.status})` });
           return;
         }
 
         const submitData = await submitRep.json();
-        const analysisId  = submitData?.data?.id;
-        if(!analysisId){
-          sendResponse({error: "No analysis ID returned"});
+        const analysisId = submitData?.data?.id;
+        if (!analysisId) {
+          sendResponse({ error: "No analysis ID returned" });
           return;
         }
 
-        const resultRep = await fetch(`https://www.virustotal.com/api/v3/analyses/${analysisId}`,
-          {headers:{"x-apikey": apiKey}}
-        );
+        // Get analysis result
+        const resultRep = await fetch(`https://www.virustotal.com/api/v3/analyses/${analysisId}`, {
+          headers: { "x-apikey": apiKey },
+        });
 
-        if(!resultRep.ok){
-          console.error("VT Result fetch failed:", resultRep.status);
-          sendResponse({error:`Result fetch failed (${resultRep.status})`});
+        if (!resultRep.ok) {
+          sendResponse({ error: `Result fetch failed (${resultRep.status})` });
           return;
         }
 
         const resultData = await resultRep.json();
         const vtStats = resultData?.data?.attributes?.stats || {};
-        sendResponse({vtStats});
 
-        //Update persistent cache url
-        cache[href] = {vtStats, ts:Date.now()};
+        // Cache and update stats
+        cache[href] = { vtStats, ts: Date.now() };
         await setPersistentCache(cache);
-
-        sendResponse({vtStats, cached: false});
         updateGlobalStats(vtStats);
-      }catch(err){
-        console.error("VT API Error:", err);
-        sendResponse({error: "Failed to query VT"});
+
+        sendResponse({ vtStats, cached: false });
+      } catch (err) {
+        console.error("[Background] VT API Error:", err);
+        sendResponse({ error: "Failed to query VirusTotal" });
       }
     })();
-    return true;  //keep msg channel open
+    return true;
+  }
+
+  // -------------------- AI MODEL CHECK --------------------
+  if (message.action === "checkAI" && message.url) {
+    fetch("http://127.0.0.1:5000/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: message.url }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        sendResponse({ result: data });
+      })
+      .catch((err) => {
+        console.error("[Background] AI API error:", err);
+        sendResponse({ result: { label: "error", probability: 0 } });
+      });
+    return true;
   }
 });
 

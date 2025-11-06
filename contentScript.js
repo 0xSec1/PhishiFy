@@ -76,6 +76,25 @@
         const href = getHref(a);
         if(!href) return;
 
+        //check using Local model
+        chrome.runtime.sendMessage(
+          { action: "checkAI", url: href },
+          response => {
+            if(response && response.result){
+              const{ label, probability } = response.result;
+              if(label=="phishing" && probability > 0.6){
+                a.style.border = "2px solid red";
+                a.style.backgroundColor = "rgba(255,0,0,0.1)";
+                a.title = `AI flagged as Phishing (${(probability * 100).toFixed(1)}%)`;
+              }
+              else{
+                a.style.border = "2px solid green";
+                a.style.backgroundColor = "rgba(0,255,0,0.1)";
+                a.title = `AI marked as Clean (${(probability * 100).toFixed(1)}%)`;
+              }
+            }
+          }
+        );
         //Highlight Suspicious links
         if(isSuspicious(visibleText, href)){
           a.style.border = "2px solid red";
@@ -90,6 +109,7 @@
         checkWithVirusTotal(a.href);
       }catch(e){
         console.error(LOG_PREFIX,'error reading anchor',e);
+        console.error("AI: error reading anchor", e);
       }
     });
 
