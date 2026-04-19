@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishiFy Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+    <!-- AUTHENTICATION VIEW -->
+    <div class="container" id="auth-view">
+        <h1 id="auth-title">Sign In to PhishiFy</h1>
+        <div class="form-group">
+            <label for="email">Email address</label>
+            <input type="email" id="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="••••••••">
+        </div>
+        <button class="btn" id="auth-btn">Sign In</button>
+        <div class="toggle-text">
+            <span id="toggle-prompt">Don't have an account?</span> 
+            <a id="toggle-link">Sign Up</a>
+        </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div class="container" id="dashboard-view">
+        <h1>Overview</h1>
+        <p style="text-align: center; font-size: 14px; margin-top: -15px; margin-bottom: 25px;">Welcome back, <span id="user-email"></span>!</p>
+        
+        <div class="stats-box">
+            <h3>Emails Scanned</h3>
+            <div class="numbers" id="stat-scanned">0</div>
+        </div>
+        <div class="stats-box" style="display: flex; justify-content: space-around;">
+            <div>
+                <h3>Clean</h3>
+                <div class="numbers" id="stat-clean" style="color: #38a169;">0</div>
+            </div>
+            <div>
+                <h3>Threats</h3>
+                <div class="numbers" id="stat-phish" style="color: #e53e3e;">0</div>
+            </div>
+        </div>
+
+        <button class="btn" id="logout-btn" style="background-color: #e2e8f0; color: #4a5568;">Sign Out</button>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

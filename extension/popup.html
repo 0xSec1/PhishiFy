@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PhishiFy</title>
+  <style>
+    /* Inline minimized core css because popup is very tiny and usually doesn't need network loads */
+    :root {
+      --bg-color: #f7f9fc; --text-color: #333; --card-bg: #fff;
+      --primary: #2b6cb0; --primary-hover: #2c5282; --border: #e2e8f0;
+    }
+    body { font-family: -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 16px; width: 280px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    h1 { font-size: 20px; margin: 0; color: var(--text-color); font-weight: 600; }
+    .stats-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; display: flex; justify-content: space-around; }
+    .stat-box { text-align: center; } .stat-box h3 { font-size: 12px; margin: 0 0 8px; font-weight: 500; color: #718096; } .stat-box .number { font-size: 20px; font-weight: bold; }
+    .scanned { color: var(--primary); } .safe { color: #38a169; } .threat { color: #e53e3e; }
+    .status-text { text-align: center; font-size: 13px; font-weight: 500; margin-bottom: 16px; background: var(--card-bg); border: 1px solid var(--border); padding: 10px; border-radius: 6px; }
+    button.btn { width: 100%; padding: 10px; background-color: var(--primary); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+    button.btn:hover { background-color: var(--primary-hover); }
+  </style>
+</head>
+<body>
+  <div class="header"><h1>PhishiFy</h1></div>
+  <div class="status-text" id="protection-status">🛡️ Active Protection ON</div>
+  <div class="stats-container">
+    <div class="stat-box"><h3>Scanned</h3><div class="number scanned" id="stat-scanned">0</div></div>
+    <div class="stat-box"><h3>Clean</h3><div class="number safe" id="stat-clean">0</div></div>
+    <div class="stat-box"><h3>Threats</h3><div class="number threat" id="stat-phish">0</div></div>
+  </div>
+  <button class="btn" id="open-dashboard">Open Dashboard</button>
+  <script src="popup.js"></script>
+</body>
+</html>

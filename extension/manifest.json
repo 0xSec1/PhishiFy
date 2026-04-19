@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "PhishiFy",
+  "version": "2.0",
+  "description": "AI-powered phishing email detection analyzing full email body, sender, and attachments.",
+  "permissions": [
+    "storage", 
+    "activeTab", 
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://outlook.office.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PhishiFy Status"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://outlook.office.com/*"
+      ],
+      "js": ["contentScript.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "dashboard/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+
